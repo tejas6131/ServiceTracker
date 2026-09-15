@@ -1,13 +1,6 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import {
-  TextInput,
-  Button,
-  useTheme,
-  HelperText,
-  SegmentedButtons,
-  Text,
-} from 'react-native-paper';
+import { ScrollView, StyleSheet, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { TextInput, Button, useTheme, HelperText, SegmentedButtons, Text } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { insertReminder } from '../../src/database/operations';
@@ -16,6 +9,23 @@ import {
   scheduleReminderNotification,
 } from '../../src/notifications/reminderScheduler';
 import type { ReminderType } from '../../src/types';
+import DatePickerField from '../../src/components/DatePickerField';
+
+function parseDate(dateStr: string): Date | null {
+  const months: Record<string, number> = {
+    Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11,
+  };
+  const parts = dateStr.trim().split('-');
+  if (parts.length === 3) {
+    const monthNum = months[parts[1]];
+    if (monthNum !== undefined) {
+      return new Date(Number(parts[2]), monthNum, Number(parts[0]), 9, 0, 0);
+    }
+  }
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) { d.setHours(9,0,0,0); return d; }
+  return null;
+}
 
 export default function AddReminderScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
@@ -38,56 +48,21 @@ export default function AddReminderScreen() {
     return Object.keys(e).length === 0;
   }
 
-  function parseDate(dateStr: string): Date | null {
-    // Try DD-MMM-YYYY format (e.g. 15-Aug-2026)
-    const months: Record<string, number> = {
-      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
-    };
-    const parts = dateStr.trim().split('-');
-    if (parts.length === 3) {
-      const [day, mon, yr] = parts;
-      const monthNum = months[mon];
-      if (monthNum !== undefined) {
-        return new Date(Number(yr), monthNum, Number(day), 9, 0, 0); // 9 AM
-      }
-    }
-    // Try YYYY-MM-DD format
-    const isoDate = new Date(dateStr);
-    if (!isNaN(isoDate.getTime())) {
-      isoDate.setHours(9, 0, 0, 0);
-      return isoDate;
-    }
-    // Try DD/MM/YYYY
-    if (parts.length === 3) {
-      const [day, month, yr] = dateStr.split('/');
-      const d = new Date(Number(yr), Number(month) - 1, Number(day), 9, 0, 0);
-      if (!isNaN(d.getTime())) return d;
-    }
-    return null;
-  }
-
   async function handleSave() {
     if (!validate() || !vehicleId) return;
     setSaving(true);
     try {
-      // Request notification permissions
       const granted = await requestNotificationPermissions();
-
       let notificationId: string | undefined;
 
       if (granted) {
         const triggerDate = parseDate(reminderDate);
         if (triggerDate && triggerDate.getTime() > Date.now()) {
-          const body =
-            reminderType === 'servicing'
-              ? `Service reminder: ${description || title}`
-              : `Insurance reminder: ${description || title}`;
-          notificationId = await scheduleReminderNotification(
-            `🚗 ${title}`,
-            body,
-            triggerDate
-          );
+          const body = reminderType === 'servicing'
+            ? `Service reminder: ${description || title}`
+            : `Insurance reminder: ${description || title}`;
+          notificationId = await scheduleReminderNotification(`🚗 ${title}`, body, triggerDate);
+          if (!notificationId) notificationId = undefined;
         }
       }
 
@@ -99,7 +74,6 @@ export default function AddReminderScreen() {
         reminderDate: reminderDate.trim(),
         notificationId,
       });
-
       router.back();
     } catch (err) {
       console.error('Failed to save reminder:', err);
@@ -109,78 +83,67 @@ export default function AddReminderScreen() {
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={100}
     >
-      <Text variant="labelLarge" style={styles.label}>
-        Reminder Type
-      </Text>
-      <SegmentedButtons
-        value={reminderType}
-        onValueChange={(v) => setReminderType(v as ReminderType)}
-        buttons={[
-          { value: 'servicing', label: '🔧 Servicing', style: styles.segBtn },
-          { value: 'insurance', label: '🛡️ Insurance', style: styles.segBtn },
-        ]}
-        style={styles.segmented}
-      />
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text variant="labelLarge" style={styles.label}>Reminder Type</Text>
+        <SegmentedButtons
+          value={reminderType}
+          onValueChange={(v) => setReminderType(v as ReminderType)}
+          buttons={[
+            { value: 'servicing', label: '🔧 Servicing', style: styles.segBtn },
+            { value: 'insurance', label: '🛡️ Insurance', style: styles.segBtn },
+          ]}
+          style={styles.segmented}
+        />
 
-      <TextInput
-        label="Title *"
-        placeholder="e.g. Next Service Due, Insurance Renewal"
-        value={title}
-        onChangeText={setTitle}
-        mode="outlined"
-        style={styles.input}
-        error={!!errors.title}
-      />
-      {errors.title ? <HelperText type="error">{errors.title}</HelperText> : null}
+        <TextInput
+          label="Title *"
+          placeholder="e.g. Next Service Due, Insurance Renewal"
+          value={title}
+          onChangeText={setTitle}
+          mode="outlined"
+          style={styles.input}
+          error={!!errors.title}
+        />
+        {errors.title ? <HelperText type="error">{errors.title}</HelperText> : null}
 
-      <TextInput
-        label="Description"
-        placeholder="Any details about this reminder"
-        value={description}
-        onChangeText={setDescription}
-        mode="outlined"
-        style={styles.input}
-        multiline
-        numberOfLines={3}
-      />
+        <TextInput
+          label="Description"
+          placeholder="Any details about this reminder"
+          value={description}
+          onChangeText={setDescription}
+          mode="outlined"
+          style={styles.input}
+          multiline
+          numberOfLines={3}
+        />
 
-      <TextInput
-        label="Reminder Date *"
-        placeholder="e.g. 15-Aug-2026 or 2026-08-15"
-        value={reminderDate}
-        onChangeText={setReminderDate}
-        mode="outlined"
-        style={styles.input}
-        error={!!errors.reminderDate}
-      />
-      {errors.reminderDate ? (
-        <HelperText type="error">{errors.reminderDate}</HelperText>
-      ) : null}
+        <DatePickerField
+          label="Reminder Date *"
+          value={reminderDate}
+          onChange={setReminderDate}
+          error={!!errors.reminderDate}
+        />
+        {errors.reminderDate ? <HelperText type="error">{errors.reminderDate}</HelperText> : null}
 
-      <Text variant="bodySmall" style={[styles.hint, { color: theme.colors.onSurfaceVariant }]}>
-        A notification will be sent at 9:00 AM on the reminder date. Supported formats: DD-MMM-YYYY (e.g. 15-Aug-2026), YYYY-MM-DD, or DD/MM/YYYY.
-      </Text>
+        <Text variant="bodySmall" style={[styles.hint, { color: theme.colors.onSurfaceVariant }]}>
+          Notifications will work when you build the production APK. In Expo Go, reminders are saved but notifications are disabled.
+        </Text>
 
-      <View style={styles.buttons}>
-        <Button mode="outlined" onPress={() => router.back()} style={styles.button}>
-          Cancel
-        </Button>
-        <Button
-          mode="contained"
-          onPress={handleSave}
-          loading={saving}
-          disabled={saving}
-          style={styles.button}
-        >
-          Save Reminder
-        </Button>
-      </View>
-    </ScrollView>
+        <View style={styles.buttons}>
+          <Button mode="outlined" onPress={() => router.back()} style={styles.button}>Cancel</Button>
+          <Button mode="contained" onPress={handleSave} loading={saving} disabled={saving} style={styles.button}>Save Reminder</Button>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -192,11 +155,6 @@ const styles = StyleSheet.create({
   segBtn: { flex: 1 },
   input: { marginBottom: 12 },
   hint: { marginBottom: 8, marginTop: -4, paddingHorizontal: 4 },
-  buttons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 24,
-    gap: 12,
-  },
+  buttons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 24, gap: 12 },
   button: { flex: 1 },
 });

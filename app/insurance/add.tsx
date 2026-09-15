@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { TextInput, Button, useTheme, HelperText } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { insertInsuranceRecord } from '../../src/database/operations';
+import DatePickerField from '../../src/components/DatePickerField';
 
 export default function AddInsuranceScreen() {
   const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
@@ -52,98 +53,67 @@ export default function AddInsuranceScreen() {
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={100}
     >
-      <TextInput
-        label="Policy No. *"
-        placeholder="e.g. D219393908"
-        value={policyNo}
-        onChangeText={setPolicyNo}
-        mode="outlined"
-        style={styles.input}
-        error={!!errors.policyNo}
-      />
-      {errors.policyNo ? (
-        <HelperText type="error">{errors.policyNo}</HelperText>
-      ) : null}
+      <ScrollView
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <TextInput
+          label="Policy No. *"
+          placeholder="e.g. D219393908"
+          value={policyNo}
+          onChangeText={setPolicyNo}
+          mode="outlined"
+          style={styles.input}
+          error={!!errors.policyNo}
+        />
+        {errors.policyNo ? <HelperText type="error">{errors.policyNo}</HelperText> : null}
 
-      <TextInput
-        label="Insurance Provider *"
-        placeholder="e.g. GO DIGIT General Insurance Limited"
-        value={insuranceProvider}
-        onChangeText={setInsuranceProvider}
-        mode="outlined"
-        style={styles.input}
-        error={!!errors.insuranceProvider}
-      />
-      {errors.insuranceProvider ? (
-        <HelperText type="error">{errors.insuranceProvider}</HelperText>
-      ) : null}
+        <TextInput
+          label="Insurance Provider *"
+          placeholder="e.g. GO DIGIT General Insurance Limited"
+          value={insuranceProvider}
+          onChangeText={setInsuranceProvider}
+          mode="outlined"
+          style={styles.input}
+          error={!!errors.insuranceProvider}
+        />
+        {errors.insuranceProvider ? <HelperText type="error">{errors.insuranceProvider}</HelperText> : null}
 
-      <TextInput
-        label="Policy Type"
-        placeholder="e.g. Comprehensive, Third-Party"
-        value={policyType}
-        onChangeText={setPolicyType}
-        mode="outlined"
-        style={styles.input}
-      />
+        <TextInput
+          label="Policy Type"
+          placeholder="e.g. Comprehensive, Third-Party"
+          value={policyType}
+          onChangeText={setPolicyType}
+          mode="outlined"
+          style={styles.input}
+        />
 
-      <TextInput
-        label="Policy Issue Date"
-        placeholder="e.g. 13-Aug-2025"
-        value={policyIssueDate}
-        onChangeText={setPolicyIssueDate}
-        mode="outlined"
-        style={styles.input}
-      />
+        <DatePickerField label="Policy Issue Date" value={policyIssueDate} onChange={setPolicyIssueDate} />
+        <DatePickerField label="Start Date" value={startDate} onChange={setStartDate} />
+        <DatePickerField label="Expiry Date" value={expiryDate} onChange={setExpiryDate} />
 
-      <TextInput
-        label="Start Date"
-        placeholder="e.g. 16-Aug-2025"
-        value={startDate}
-        onChangeText={setStartDate}
-        mode="outlined"
-        style={styles.input}
-      />
+        <TextInput
+          label="Premium Amount (₹)"
+          placeholder="e.g. 10893"
+          value={premiumAmount}
+          onChangeText={setPremiumAmount}
+          mode="outlined"
+          style={styles.input}
+          keyboardType="numeric"
+        />
 
-      <TextInput
-        label="Expiry Date"
-        placeholder="e.g. 15-Aug-2026"
-        value={expiryDate}
-        onChangeText={setExpiryDate}
-        mode="outlined"
-        style={styles.input}
-      />
-
-      <TextInput
-        label="Premium Amount (₹)"
-        placeholder="e.g. 10893"
-        value={premiumAmount}
-        onChangeText={setPremiumAmount}
-        mode="outlined"
-        style={styles.input}
-        keyboardType="numeric"
-      />
-
-      <View style={styles.buttons}>
-        <Button mode="outlined" onPress={() => router.back()} style={styles.button}>
-          Cancel
-        </Button>
-        <Button
-          mode="contained"
-          onPress={handleSave}
-          loading={saving}
-          disabled={saving}
-          style={styles.button}
-        >
-          Save
-        </Button>
-      </View>
-    </ScrollView>
+        <View style={styles.buttons}>
+          <Button mode="outlined" onPress={() => router.back()} style={styles.button}>Cancel</Button>
+          <Button mode="contained" onPress={handleSave} loading={saving} disabled={saving} style={styles.button}>Save</Button>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -151,11 +121,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 16, paddingBottom: 48 },
   input: { marginBottom: 12 },
-  buttons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 24,
-    gap: 12,
-  },
+  buttons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 24, gap: 12 },
   button: { flex: 1 },
 });
