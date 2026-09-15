@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { FAB, Appbar, useTheme, Searchbar } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { getAllVehicles } from '../src/database/operations';
 import type { Vehicle } from '../src/types';
