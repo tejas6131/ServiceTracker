@@ -4,11 +4,8 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { PaperProvider } from 'react-native-paper';
 import { useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { en, registerTranslation } from 'react-native-paper-dates';
 import { lightTheme, darkTheme } from '../src/config/theme';
 import { initializeDatabase, getDbName } from '../src/database/schema';
-
-registerTranslation('en', en);
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
