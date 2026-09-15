@@ -9,6 +9,8 @@ interface Props {
   onChange: (formatted: string) => void;
   error?: boolean;
   placeholder?: string;
+  /** If true, dates before today are disabled (for reminders, future events) */
+  futureOnly?: boolean;
 }
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -35,7 +37,12 @@ function parseDisplayDate(str: string): Date | undefined {
   return undefined;
 }
 
-export default function DatePickerField({ label, value, onChange, error, placeholder }: Props) {
+function getToday(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+export default function DatePickerField({ label, value, onChange, error, placeholder, futureOnly }: Props) {
   const [open, setOpen] = useState(false);
 
   const onDismiss = useCallback(() => setOpen(false), []);
@@ -49,6 +56,10 @@ export default function DatePickerField({ label, value, onChange, error, placeho
     },
     [onChange]
   );
+
+  const validRange = futureOnly
+    ? { startDate: getToday() }
+    : undefined;
 
   return (
     <>
@@ -76,6 +87,7 @@ export default function DatePickerField({ label, value, onChange, error, placeho
         label={label}
         saveLabel="Select"
         animationType="slide"
+        validRange={validRange}
       />
     </>
   );

@@ -131,6 +131,7 @@ export default function AddReminderScreen() {
           value={reminderDate}
           onChange={setReminderDate}
           error={!!errors.reminderDate}
+          futureOnly
         />
         {errors.reminderDate ? <HelperText type="error">{errors.reminderDate}</HelperText> : null}
 
