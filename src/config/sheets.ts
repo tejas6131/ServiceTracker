@@ -15,5 +15,5 @@ export const SYNC_ENABLED = false;
 
 export const APPS_SCRIPT_URL = '';
 
-// How often to auto-sync in milliseconds (default: 5 minutes)
-export const SYNC_INTERVAL_MS = 5 * 60 * 1000;
+// How often to auto-pull remote changes in milliseconds (default: 1 hour)
+export const SYNC_INTERVAL_MS = 60 * 60 * 1000;

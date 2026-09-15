@@ -6,11 +6,17 @@ import type {
   InsuranceRecord,
   Reminder,
 } from '../types';
+import { pushPendingChanges } from '../sync/syncService';
 
 // ────────────────────── Helpers ──────────────────────
 
 function now(): string {
   return new Date().toISOString();
+}
+
+/** Fire-and-forget push after any write operation */
+function triggerSync(db: SQLiteDatabase): void {
+  pushPendingChanges(db).catch(() => {});
 }
 
 function generateId(): string {
@@ -62,6 +68,7 @@ export async function insertVehicle(
       timestamp,
     ]
   );
+  triggerSync(db);
   return id;
 }
 
@@ -97,6 +104,7 @@ export async function updateVehicle(
     `UPDATE vehicles SET ${fields.join(', ')} WHERE id = ?`,
     values
   );
+  triggerSync(db);
 }
 
 export async function deleteVehicle(
@@ -104,6 +112,7 @@ export async function deleteVehicle(
   id: string
 ): Promise<void> {
   await db.runAsync('DELETE FROM vehicles WHERE id = ?', [id]);
+  triggerSync(db);
 }
 
 // ────────────────────── Service Records ──────────────────────
@@ -155,6 +164,7 @@ export async function insertServiceRecord(
       timestamp,
     ]
   );
+  triggerSync(db);
   return id;
 }
 
@@ -191,6 +201,7 @@ export async function updateServiceRecord(
     `UPDATE service_records SET ${fields.join(', ')} WHERE id = ?`,
     values
   );
+  triggerSync(db);
 }
 
 export async function deleteServiceRecord(
@@ -198,6 +209,7 @@ export async function deleteServiceRecord(
   id: string
 ): Promise<void> {
   await db.runAsync('DELETE FROM service_records WHERE id = ?', [id]);
+  triggerSync(db);
 }
 
 // ────────────────────── Part Records ──────────────────────
@@ -250,6 +262,7 @@ export async function insertPartRecord(
       timestamp,
     ]
   );
+  triggerSync(db);
   return id;
 }
 
@@ -287,6 +300,7 @@ export async function updatePartRecord(
     `UPDATE part_records SET ${fields.join(', ')} WHERE id = ?`,
     values
   );
+  triggerSync(db);
 }
 
 export async function deletePartRecord(
@@ -294,6 +308,7 @@ export async function deletePartRecord(
   id: string
 ): Promise<void> {
   await db.runAsync('DELETE FROM part_records WHERE id = ?', [id]);
+  triggerSync(db);
 }
 
 // ────────────────────── Insurance Records ──────────────────────
@@ -345,6 +360,7 @@ export async function insertInsuranceRecord(
       timestamp,
     ]
   );
+  triggerSync(db);
   return id;
 }
 
@@ -381,6 +397,7 @@ export async function updateInsuranceRecord(
     `UPDATE insurance_records SET ${fields.join(', ')} WHERE id = ?`,
     values
   );
+  triggerSync(db);
 }
 
 export async function deleteInsuranceRecord(
@@ -388,6 +405,7 @@ export async function deleteInsuranceRecord(
   id: string
 ): Promise<void> {
   await db.runAsync('DELETE FROM insurance_records WHERE id = ?', [id]);
+  triggerSync(db);
 }
 
 // ────────────────────── Reminders ──────────────────────
@@ -438,6 +456,7 @@ export async function insertReminder(
       timestamp,
     ]
   );
+  triggerSync(db);
   return id;
 }
 
@@ -449,6 +468,7 @@ export async function markReminderCompleted(
     "UPDATE reminders SET isCompleted = 1, updatedAt = ?, syncStatus = 'pending' WHERE id = ?",
     [now(), id]
   );
+  triggerSync(db);
 }
 
 export async function deleteReminder(
@@ -456,4 +476,5 @@ export async function deleteReminder(
   id: string
 ): Promise<void> {
   await db.runAsync('DELETE FROM reminders WHERE id = ?', [id]);
+  triggerSync(db);
 }

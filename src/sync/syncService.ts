@@ -2,19 +2,16 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { SYNC_ENABLED, APPS_SCRIPT_URL } from '../config/sheets';
 
 /**
- * Sync service that pushes pending local changes to Google Sheets
- * and pulls remote changes from the shared sheet.
- *
  * Sync strategy:
  *  - Each table has a syncStatus column: 'pending' or 'synced'
- *  - On push: send all pending records to the sheet, then mark as synced
- *  - On pull: fetch all records from the sheet and upsert into local DB
+ *  - On data change: push pending records immediately (lightweight)
+ *  - On background interval (1 hour): full sync — push pending + pull remote
+ *  - Manual "Sync Now" from settings: full sync
  *  - Conflict resolution: last-write-wins based on updatedAt timestamp
  */
 
 const TABLES = ['vehicles', 'service_records', 'part_records', 'insurance_records', 'reminders'] as const;
 
-// Map local table names to Google Sheet tab names
 const TABLE_TO_SHEET: Record<string, string> = {
   vehicles: 'Vehicles',
   service_records: 'Servicing',
@@ -31,7 +28,48 @@ interface SyncResult {
 }
 
 /**
- * Perform a full sync: push local pending changes, then pull remote changes.
+ * Push only — called automatically after any data change.
+ * Lightweight: only sends pending records, no pull.
+ */
+export async function pushPendingChanges(db: SQLiteDatabase): Promise<void> {
+  if (!SYNC_ENABLED || !APPS_SCRIPT_URL) return;
+
+  try {
+    for (const table of TABLES) {
+      const pendingRows = await db.getAllAsync<Record<string, unknown>>(
+        `SELECT * FROM ${table} WHERE syncStatus = 'pending'`
+      );
+
+      if (pendingRows.length > 0) {
+        const response = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'push',
+            sheet: TABLE_TO_SHEET[table],
+            records: pendingRows,
+          }),
+        });
+
+        if (response.ok) {
+          const ids = pendingRows.map((r) => r.id as string);
+          for (const id of ids) {
+            await db.runAsync(
+              `UPDATE ${table} SET syncStatus = 'synced' WHERE id = ?`,
+              [id]
+            );
+          }
+        }
+      }
+    }
+  } catch {
+    // Silent fail — will retry on next change or manual sync
+  }
+}
+
+/**
+ * Full sync: push local pending changes, then pull remote changes.
+ * Called by "Sync Now" button and hourly background timer.
  */
 export async function performSync(db: SQLiteDatabase): Promise<SyncResult> {
   if (!SYNC_ENABLED || !APPS_SCRIPT_URL) {
@@ -60,7 +98,6 @@ export async function performSync(db: SQLiteDatabase): Promise<SyncResult> {
         });
 
         if (response.ok) {
-          // Mark pushed records as synced
           const ids = pendingRows.map((r) => r.id as string);
           for (const id of ids) {
             await db.runAsync(
@@ -106,7 +143,10 @@ export async function performSync(db: SQLiteDatabase): Promise<SyncResult> {
             if (remoteUpdated > localUpdated) {
               const cols = Object.keys(remote).filter((c) => c !== 'id');
               const setClause = cols.map((c) => `${c} = ?`).join(', ');
-              const vals = [...cols.map((c) => remote[c] as string | number | null), remote.id as string];
+              const vals = [
+                ...cols.map((c) => remote[c] as string | number | null),
+                remote.id as string,
+              ];
               await db.runAsync(
                 `UPDATE ${table} SET ${setClause} WHERE id = ?`,
                 vals
