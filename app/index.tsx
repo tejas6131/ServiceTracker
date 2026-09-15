@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { FAB, Appbar, useTheme, Searchbar } from 'react-native-paper';
+import { FAB, useTheme, Searchbar, IconButton } from 'react-native-paper';
 import { useRouter } from 'expo-router';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, Stack } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { getAllVehicles } from '../src/database/operations';
 import type { Vehicle } from '../src/types';
@@ -35,6 +35,20 @@ export default function DashboardScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <Stack.Screen
+        options={{
+          title: 'Service Tracker',
+          headerTitleAlign: 'center',
+          headerRight: () => (
+            <IconButton
+              icon="cog"
+              size={24}
+              onPress={() => router.push('/settings')}
+              iconColor={theme.colors.primary}
+            />
+          ),
+        }}
+      />
       {vehicles.length > 0 && (
         <Searchbar
           placeholder="Search vehicles..."

@@ -136,7 +136,7 @@ export default function AddReminderScreen() {
         {errors.reminderDate ? <HelperText type="error">{errors.reminderDate}</HelperText> : null}
 
         <Text variant="bodySmall" style={[styles.hint, { color: theme.colors.onSurfaceVariant }]}>
-          Notifications will work when you build the production APK. In Expo Go, reminders are saved but notifications are disabled.
+          A notification will be sent at 9:00 AM on the reminder date.
         </Text>
 
         <View style={styles.buttons}>

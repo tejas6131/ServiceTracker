@@ -71,6 +71,10 @@ export default function RootLayout() {
             name="reminders/add"
             options={{ title: 'Add Reminder', presentation: 'modal' }}
           />
+          <Stack.Screen
+            name="settings"
+            options={{ title: 'Settings' }}
+          />
         </Stack>
       </PaperProvider>
     </SQLiteProvider>
